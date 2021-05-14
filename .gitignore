@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+bin/__pycache__/
 
 # C extensions
 *.so
@@ -130,3 +131,4 @@ dmypy.json
 
 # VS code config
 .vscode/
+bin/.vscode/
