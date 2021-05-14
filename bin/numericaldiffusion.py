@@ -48,7 +48,7 @@ class NumericalDiffusion:
             A[-1,-1] = 1 + K/r(xsteps)**2 *(r(xsteps)**2 + deltax**2)
             A = np.linalg.inv(A)
             self.A = A
-    
+
     def timeStep(self):
         #Steps one timme step forward 
         self.U = np.matmul(self.A, self.U)
@@ -63,15 +63,18 @@ class MonomericDiffusion(NumericalDiffusion):
         super().__init__(start, stop, xsteps, deltat, D, U = None, how='spherical')
         self.ke = ke
     
+
     def timeStep(self):
         self.U[0,0] += self.ke*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)
         super().timeStep()
 
 class EcoliMonomericDiffusion(MonomericDiffusion):
-    ke = .1e-10 * N_A * 1e-12
+    """
+    Siulates diffusion for CsgA monomers. All values in nm
+    """
+    ke = 1e-10 * N_A * 1e-12
     R0 = 380
     D = 82114
-    xsteps = 50
     
-    def __init__(self, dist, xteps, deltat):
-        super().__init__(self.R0, dist + self.R0, self.xsteps, deltat, self.D, self.ke)
+    def __init__(self, dist, xsteps, deltat):
+        super().__init__(self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke)
