@@ -68,13 +68,45 @@ class MonomericDiffusion(NumericalDiffusion):
         self.U[0,0] += self.ke*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)
         super().timeStep()
 
-class EcoliMonomericDiffusion(MonomericDiffusion):
+class EcoliDiffusion(MonomericDiffusion):
     """
     Siulates diffusion for CsgA monomers. All values in nm
     """
-    ke = 1e-10 * N_A * 1e-12
+    bactomol = (N_A*1e-12)
+    ke = 1e-10 * bactomol
     R0 = 380
     D = 82114
+    nm3todm3 = 1e24
     
     def __init__(self, dist, xsteps, deltat):
         super().__init__(self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke)
+
+class UniformEcoliDiffusion(EcoliDiffusion):
+    def __init__(self, dist, xsteps, deltat, U0=0):
+        super().__init__(dist, xsteps, deltat)
+        self.U = U0
+        self.ke = 1e-10
+    
+    def timeStep(self, cDiff):
+        self.U += (cDiff/self.bactomol + self.ke*self.deltat)/self.nm3todm3
+
+
+class UnifCurliFormWAInh(UniformEcoliDiffusion):
+    def __init__(self, dist, xsteps, deltat,inhC, bindingrate, U0=0):
+        super().__init__(dist, xsteps, deltat, U0=U0)
+        self.ks = bindingrate
+        self.inhC = inhC
+
+    def timeStep(self, cDiff):
+        super().timeStep(cDiff)
+        self.U -= max(self.ks*self.inhC*self.U*self.deltat,0)
+
+class CurliAinhSecretion(UnifCurliFormWAInh):
+    KS = 10**-0.2
+    def __init__(self, dist, xsteps, deltat,pAinh, U0=0):
+        super().__init__(dist, xsteps, deltat, 0, self.KS, U0=U0)
+        self.pAinh = pAinh
+    
+    def timeStep(self, cDiff):
+        super().timeStep(cDiff)
+        self.inhC += self.pAinh*self.deltat - max(self.ks*self.inhC*self.U*self.deltat,0)
