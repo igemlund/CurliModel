@@ -1,68 +1,59 @@
-from numericaldiffusion import CurliAinhSecretion
-from fibrilformation import FibrilFormation
+
+from fibrilformation import UniformFibrilFormation
 from scipy.constants import N_A 
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import copy
+from inhibitors import Ainh, CsgC
 np.random.RandomState(41)
 
-time0 = time.time()
-time1 = time.time()
-timesteps = int(1e4)
-dist = 10000
-xst = 1000
-totim = 1*3600
+def main():
+    time0 = time.time()
+    time1 = time.time()
+    timesteps = int(1e4)
+    dist = 10000
+    xst = 100
+    totim = 3600
 
-diffusion = FibrilFormation(dist, xst, totim/timesteps, how='uniform')
-    
-Ae = []
-te = []
-for i in range(timesteps):
-    if i % (timesteps // 10) == 0:
-        print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-        time1 = time.time()
-    if (i + 1) % (timesteps / 1000):
-        Ae.append(diffusion.totalMass)
-        te.append(i*totim / timesteps)
-    diffusion.timeStep()
+    for j in np.linspace(-13,-9,8):
+        args = (10**j,  dist, xst, totim/timesteps,'uniform', 0)
+        diffusionInh =  UniformFibrilFormation(dist, xst, totim/timesteps,[CsgC(*args)])
+        A = []
+        t = []
+        for i in range(timesteps):
+            if i % (timesteps // 10) == 0:
+                print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
+                print(diffusionInh.C.U*10**24, diffusionInh.C.inhibitors[0].U*10**24)
+                time1 = time.time()
+            A.append(diffusionInh.totalMass)
+            t.append(i*totim / timesteps )
+            diffusionInh.timeStep()
 
-for j in np.linspace(-10, -5, 5):
-    diffusionInh =  FibrilFormation(dist, xst, totim/timesteps, how='uniform', \
-        what=CurliAinhSecretion(dist, xst, totim/timesteps, \
-        10**j), fibril0 = diffusion)
+        plt.plot(t,A, alpha = 0.8, label="{} /s".format(str(round(10**j*10**24/N_A *10**12, 2)))) 
+
+    diffusionInh =  UniformFibrilFormation(dist, xst, totim/timesteps, \
+        [CsgC(0,dist, xst, totim/timesteps, 'uniform', 0)])
     A = []
     t = []
     for i in range(timesteps):
         if i % (timesteps // 10) == 0:
             print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-            print(diffusionInh.C.U*10**24)
             time1 = time.time()
-        if (i+1) % (timesteps / 1000):
-            A.append(diffusionInh.totalMass)
-            t.append(i*totim / timesteps + totim)
+        A.append(diffusionInh.totalMass)
+        t.append(i*totim / timesteps)
         diffusionInh.timeStep()
 
-    plt.plot(t,A, alpha = 0.8, label="{} /s".format(str(10**j*10**24 /N_A *10**12)))
+    plt.plot(t,A,alpha=0.2, lw=5)
 
-for i in range(timesteps):
-    if i % (timesteps // 10) == 0:
-        print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-        time1 = time.time()
-    if (i+1) % (timesteps / 1000):
-        Ae.append(diffusion.totalMass)
-        te.append(i*totim / timesteps + totim)
-    diffusion.timeStep()
+    plt.legend()
+    plt.title('Effect of CsgC Chaperone Secretion Rate on Curli Growth. \n \
+        Secretion')
+    plt.xlabel('Time /s')
+    plt.ylabel('Mass /nbr monomer masses')
+    plt.savefig('tmp4.png')
+        
 
-plt.plot(te,Ae, linewidth=5, alpha = 0.2, c = 'blue', label ='0')
+if __name__ == '__main__':
+    main()
 
-plt.legend()
-plt.title('Effect of CsgA Inhibitor Secretion Rate on Curli Growth. \n \
-    Secretion starting after half the time')
-plt.xlabel('Time /s')
-plt.ylabel('Mass /nbr monomer masses')
-plt.savefig('tmp.png')
-    
-    
-
-    
+        

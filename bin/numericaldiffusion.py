@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import os
 from scipy.constants import N_A
 
-class NumericalDiffusion:
+class SphericNumericalDiffusion(object):
     """
     Simulates diffusion with constant D in one dimension from start to stop with the timestep deltat and xstep number of bins.
     Implemented for spherical symetry but will be extended to linear symmetry. 
@@ -18,7 +17,7 @@ class NumericalDiffusion:
         strinng how
     """
     A = np.array([])
-    def __init__(self, start, stop, xsteps, deltat, D, U = None, how='spherical'):
+    def __init__(self, start, stop, xsteps, deltat, D, U = None):
         self.start = start
         self.stop = stop
         self.xsteps = xsteps
@@ -26,11 +25,9 @@ class NumericalDiffusion:
         self.D = D
         self.deltax = (stop - start)/xsteps
         self.time = 0
-        self.path = "../data/DiffusionArrays/Array_" + '_'.join([str(x) for x in [self.deltax, deltat, xsteps, D]])
         self.U = U
         if self.U == None:
             self.U = np.zeros((xsteps, 1))
-        
         self.makeArray(xsteps, deltat, self.deltax, D)
     
     def makeArray(self, xsteps, deltat, deltax, D):
@@ -50,63 +47,79 @@ class NumericalDiffusion:
             self.A = A
 
     def timeStep(self):
-        #Steps one timme step forward 
+        #Steps one time step forward 
         self.U = np.matmul(self.A, self.U)
         self.time += self.deltat
 
 
-class MonomericDiffusion(NumericalDiffusion):
+class SphericIncrementedDiffusion(SphericNumericalDiffusion):
     """
     Simulates diffusion where more particles are generated at start.
     """
-    def __init__(self, start, stop, xsteps, deltat, D, ke):
-        super().__init__(start, stop, xsteps, deltat, D, U = None, how='spherical')
+    bactomol = (N_A*1e-12)
+    def __init__(self, funclist, start, stop, xsteps, deltat, D, ke, U = None):
+        super().__init__(start, stop, xsteps, deltat, D, U)
         self.ke = ke
+        self.funclist = funclist
     
 
     def timeStep(self):
-        self.U[0,0] += self.ke*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)
+        self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)
         super().timeStep()
 
-class EcoliDiffusion(MonomericDiffusion):
+class UniformIncrementedDiffusion(object):
+    nm3todm3 = 1e24
+    def __init__(self, deltat, ke, U = None):
+        self.deltat = deltat
+        self.time = 0
+        self.U = U
+        self.ke = ke
+    
+    def timeStep(self):
+        self.U += self.ke*self.deltat/self.nm3todm3
+
+class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     """
     Siulates diffusion for CsgA monomers. All values in nm
     """
-    bactomol = (N_A*1e-12)
-    ke = 1e-10 * bactomol
+    ke = 1e-10 
     R0 = 380
     D = 82114
-    nm3todm3 = 1e24
     
-    def __init__(self, dist, xsteps, deltat):
-        super().__init__(self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke)
-
-class UniformEcoliDiffusion(EcoliDiffusion):
-    def __init__(self, dist, xsteps, deltat, U0=0):
-        super().__init__(dist, xsteps, deltat)
-        self.U = U0
-        self.ke = 1e-10
     
-    def timeStep(self, cDiff):
-        self.U += (cDiff/self.bactomol + self.ke*self.deltat)/self.nm3todm3
+    def __init__(self, dist, xsteps, deltat, how, U0):
+        self.how = how
+        if how == 'spherical':
+            SphericIncrementedDiffusion.__init__(self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke, U0)
+        elif how == 'uniform':
+            UniformIncrementedDiffusion.__init__(self,deltat, self.ke, U0)
 
+class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
+    R0 = 380
+    D = 82114
+    def __init__(self, dist, xsteps, deltat, ke, how='uniform', U0=None):
+        self.how = how
+        if how == 'spherical':
+            SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke, U0)
+        elif how == 'uniform':
+            UniformIncrementedDiffusion.__init__(self,deltat, ke, U0)
 
-class UnifCurliFormWAInh(UniformEcoliDiffusion):
-    def __init__(self, dist, xsteps, deltat,inhC, bindingrate, U0=0):
-        super().__init__(dist, xsteps, deltat, U0=U0)
-        self.ks = bindingrate
-        self.inhC = inhC
+    def bindingFunc(self,other):
+        return None
+    def rateFunc(self,other, kwrates):
+        return kwrates
 
-    def timeStep(self, cDiff):
-        super().timeStep(cDiff)
-        self.U -= max(self.ks*self.inhC*self.U*self.deltat,0)
-
-class CurliAinhSecretion(UnifCurliFormWAInh):
-    KS = 10**-0.2
-    def __init__(self, dist, xsteps, deltat,pAinh, U0=0):
-        super().__init__(dist, xsteps, deltat, 0, self.KS, U0=U0)
-        self.pAinh = pAinh
+    def timeStep(self, other):
+        if self.how == 'uniform':
+            UniformIncrementedDiffusion.timeStep(self)
+        self.bindingFunc(other)
     
-    def timeStep(self, cDiff):
-        super().timeStep(cDiff)
-        self.inhC += self.pAinh*self.deltat - max(self.ks*self.inhC*self.U*self.deltat,0)
+class inhibitedCsgAC(CsgADiffusion):
+    def __init__(self, dist, xsteps, deltat, how, U0, inhibitors):
+        super().__init__(dist, xsteps, deltat, how, U0)
+        self.inhibitors = inhibitors
+    
+    def timeStep(self):
+        if self.how == 'uniform':
+            UniformIncrementedDiffusion.timeStep(self)
+        list(map(lambda i : i.timeStep(self), self.inhibitors))

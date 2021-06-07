@@ -1,6 +1,6 @@
 import numpy as np
 import randomComplexAddition
-from numericaldiffusion import EcoliDiffusion, UniformEcoliDiffusion
+from numericaldiffusion import inhibitedCsgAC
 from curliutil import ListDict
 import cmath
 from scipy.constants import N_A
@@ -22,7 +22,7 @@ class CsgAFibril:
             return True
         return False
 
-class FibrilFormation(object):
+class UniformFibrilFormation(object):
     """
     Simulates Curli fibril formation. 
     
@@ -42,20 +42,15 @@ class FibrilFormation(object):
         t > 1e3
     """
     CSGBRATE = 1.3e-13*N_A*1e-12
-    def __init__(self, dist, xsteps, deltat, how='uniform', what = None, fibril0 = None):
+    def __init__(self, dist, xsteps, deltat,  inhibitors = [], concentrationProfile = None, fibril0 = None):
         self.dist = dist
         self.xsteps = xsteps
         self.deltat = deltat
         self.deltax = dist / xsteps
-        if how == 'uniform':
-            self.timeStep = self.__uniformTimeStep
-            if what == None:
-                self.C = UniformEcoliDiffusion(dist, xsteps, deltat)
-            else:
-                self.C = what
+        if concentrationProfile == None:
+            self.C = inhibitedCsgAC(dist, xsteps, deltat, how = 'uniform',U0=0, inhibitors=inhibitors)
         else:
-            self.timeStep = self.__nonUniformTimeStep
-            self.C = EcoliDiffusion(dist, xsteps, deltat)
+            self.C = concentrationProfile
         
         if fibril0 == None:
             self.endpointSets = [ListDict() for _ in range(xsteps)]
@@ -84,15 +79,20 @@ class FibrilFormation(object):
         self.totalMass += 1
         return
          
-    def __nonUniformTimeStep(self):
+    def timeStep(self):
         for x in range(self.xsteps):
             if len(self.endpointSets[x]) > 0:
-                mC = self.C.U[x,0]
+                kwrates = {'kplus':CsgAFibril.KPLUS}
+                for inh in self.C.inhibitors:
+                    kwrates = inh.rateFunc(self.C, kwrates)
+                if (CsgAFibril.KPLUS != 1.4*10**6*1e24):
+                    print("WARNING")
+                
+                mC = self.C.U
                 fN = len(self.endpointSets[x])
-                xPos = x*self.deltax + self.C.R0
-                dV = 4/3*np.pi*((xPos+self.deltax)**3 - xPos**3)
+                dV = 1e-12*1e24
                 mN = mC * N_A * dV
-                nElongations = int(np.random.poisson(max(CsgAFibril.KPLUS * fN * mC*self.deltat,0)))
+                nElongations = int(np.random.poisson(max(kwrates['kplus'] * fN * mC*self.deltat,0)))
                 toElongate = np.random.choice(fN, size=nElongations)
                 toElongate = list(map(lambda f : self.endpointSets[x].items[f], toElongate))
                 list(map(self.__elongate, toElongate))
@@ -103,14 +103,21 @@ class FibrilFormation(object):
                     raise "Dist to small. Fibril out of bounds."
                 
                 mN -= nElongations
-                self.C.U[x,0] = mN /dV /N_A
+                self.C.U = mN /dV /N_A
         self.C.timeStep()
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
 
-    def __uniformTimeStep(self):
-        diff = 0
+class DiffusiveFibrilFormation(UniformFibrilFormation):
+    def __init__(self, dist, xsteps, deltat,  inhibitors=[], concentrationProfile = None, fibril0 = None):
+        super().__init__(self, dist, xsteps, deltat, concentrationProfile, fibril0)
+        if concentrationProfile == None:
+            self.C = inhibitedCsgAC(dist, xsteps, deltat, how = 'spherical', inhibitors=inhibitors)
+        else:
+            self.C = concentrationProfile
+
+    def timeStep(self):
         for x in range(self.xsteps):
             if len(self.endpointSets[x]) > 0 and self.C.U > 0:
                 mC = self.C.U
@@ -128,8 +135,9 @@ class FibrilFormation(object):
                 except IndexError:
                     raise "Dist to small. Fibril out of bounds."
 
-                diff -= nElongations
-        self.C.timeStep(diff)
+                mN -= nElongations
+                self.C.U = mN /dV /N_A
+        self.C.timeStep()
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
