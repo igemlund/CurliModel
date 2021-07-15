@@ -7,9 +7,9 @@ from scipy.constants import N_A
 import copy
 
 class CsgAFibril:
-    SIGMA = 3.47
-    KPLUS = 1.4*10**6*1e24 #mole/nm3/s
-    UNITL = 4.
+    SIGMA = 3.47 #degrees
+    KPLUS = 1.4*10**6 #/mol s
+    UNITL = 4e-9
 
     def __init__(self, index):
         self.pos = 0
@@ -41,7 +41,7 @@ class UniformFibrilFormation(object):
         dist > 1000 nm (at least)
         dt > 1e3
     """
-    CSGBRATE = 1.3e-13*N_A*1e-12
+    CSGBRATE = 1.3e-13*N_A*1e-12 #n / bac / s
     def __init__(self, dist, xsteps, deltat,  inhibitors = [], concentrationProfile = None, fibril0 = None):
         self.dist = dist
         self.xsteps = xsteps
@@ -88,7 +88,7 @@ class UniformFibrilFormation(object):
                 
                 mC = self.C.U
                 fN = len(self.endpointSets[x])
-                dV = 1e-12*1e24
+                dV = 1e-12 #The volume occupied by one bacteria in 1e12 bac/dm3 sol.
                 mN = mC * N_A * dV
                 nElongations = int(np.random.poisson(max(kwrates['kplus'] * fN * mC*self.deltat,0)))
                 toElongate = np.random.choice(fN, size=nElongations)
@@ -101,7 +101,7 @@ class UniformFibrilFormation(object):
                     raise "Dist to small. Fibril out of bounds."
                 
                 mN -= nElongations
-                self.C.U = mN /dV /N_A
+                self.C.U = mN / dV /N_A
         self.C.timeStep()
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))

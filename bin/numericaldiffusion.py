@@ -80,7 +80,6 @@ class SphericIncrementedDiffusion(SphericNumericalDiffusion):
         super().timeStep()
 
 class UniformIncrementedDiffusion(object):
-    nm3todm3 = 1e24
     def __init__(self, deltat, ke, U = 0):
         """Simulates concentration in a homogenous solution were more substance is added every second. 
 
@@ -95,16 +94,16 @@ class UniformIncrementedDiffusion(object):
         self.ke = ke
     
     def timeStep(self):
-        self.U += self.ke*self.deltat/self.nm3todm3
+        self.U += self.ke*self.deltat
 
 class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     ke = 1e-10 
     R0 = 380
-    D = 82114
+    D = 82114 *1e-9
     
     
     def __init__(self, dist, xsteps, deltat, how, U0):
-        """Simmulates the diffusion of CsgA monomers. All constants in nm
+        """Simmulates the diffusion of CsgA monomers. 
 
         Args:
             dist (float): length away from membrane to be simulated

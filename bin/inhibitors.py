@@ -3,7 +3,7 @@ from scipy.constants import N_A
 from numericaldiffusion import Inh
 
 class Ainh_fixed:
-    U = 0.3*1e-3*1e24 #Concentration in mol/nm3
+    U = 0.3*1e-3 #Concentration in mol/nm3
     def __init__(self, deltat, KS):
         self.KS = KS
         self.deltat = deltat
@@ -18,10 +18,9 @@ class Ainh(Inh):
     The binding constant KS was estimated by assuming first order binding to the CsgA monomers \
         and then computing the equilibrium constant from previous published results. 
     """
-    #KS = 10**24.5
-    def __init__(self, pAinh, dist, xsteps, deltat, how, U0, KS):
+    KS = 10**24.5
+    def __init__(self, pAinh, dist, xsteps, deltat, how, U0):
         super().__init__(dist, xsteps, deltat, pAinh, how, U0)
-        self.KS = KS
 
     def bindingfunction(self, monC):
         """The function declaring how the inhibitor will affect the CsgA concentration. \

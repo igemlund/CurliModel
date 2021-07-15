@@ -11,7 +11,7 @@ time1 = time.time()
 timesteps = int(1e2)
 dist = 2500
 xst = 150
-diffusion = UniformFibrilFormation(dist, xst, 10.*3600/timesteps, how='uniform')
+diffusion = UniformFibrilFormation(dist, xst, 10.*3600/timesteps)
 
 for i in range(timesteps):
     if i % (timesteps // 10) == 0:
@@ -33,7 +33,7 @@ axs[0,0].set_title('Mass distribution')
 #axs[0,1].plot(x, diffusion.diffusion.U[:,0]*1e30)
 #axs[0,1].set_title('Monomer concentration')
 #axs[0,1].set_ylabel("Concentration /mu M")
-print(diffusion.C.U)
+print(diffusion.U)
 axs[1,0].hist(list(map(lambda i : i.pos, fibrils)))
 axs[1,0].set_title('Endpoint distrubution')
 axs[1,0].set_yscale("log")
