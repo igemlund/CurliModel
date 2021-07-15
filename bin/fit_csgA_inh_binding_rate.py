@@ -1,54 +1,62 @@
 from os import times
 from numpy.lib.function_base import diff
-from numericaldiffusion import UnifCurliFormWAInh
-from fibrilformation import FibrilFormation
+from inhibitors import Ainh_fixed
+from fibrilformation import UniformFibrilFormation
 from scipy.constants import N_A 
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+from time import time
 np.random.RandomState(41)
 
-time0 = time.time()
-time1 = time.time()
-timesteps = int(1e2)
-dist = 2500
+totime = 3*3600
+dist = 10000
 xst = 150
-totim = 5*3600
-for j in np.linspace(-1, 1, 6):
-    diffusion = FibrilFormation(dist, xst, totim/timesteps, how='uniform', what=UnifCurliFormWAInh(dist, xst, totim / timesteps, \
-        10**j*1e24, 0.3*1e-3*1e-24))
-    
+timesteps = int(1e2)
+deltat =  totime / timesteps
+
+def plot(inhibitors, mainplot=None, label=None):
     A = []
     t = []
+    time0 = time()
+    time1 = time()
+    diffusion = UniformFibrilFormation(dist, xst, deltat,  inhibitors = inhibitors)
     for i in range(timesteps):
+        
         if i % (timesteps // 10) == 0:
-            print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-            time1 = time.time()
-        if i % (timesteps / 1000):
+            print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time() - time0), dt = str(time() - time1)))
+            time1 = time()
+        if i % (timesteps / 10):
             A.append(diffusion.totalMass)
-            t.append(i*totim / timesteps)
+            t.append(i*totime / timesteps)
         diffusion.timeStep()
+    A.append(diffusion.totalMass)
+    t.append(totime)
+    plt.plot(t,A, linewidth=5, alpha = 0.5, label=label)
+    if not mainplot == None:
+        plt.plot(mainplot[0], mainplot[1], alpha = 0.2, label = 'Main')
+    plt.legend()
+    return t, A
 
-    plt.plot(t,A, label=str(j))
+t0, A0 = plot([])
+M0 = A0[-1]
+M = 0
+failstop = 20
+upper = 1e30
+lower = 1e20
 
-diffusion = FibrilFormation(dist, xst, totim/timesteps, how='uniform')
-    
-A = []
-t = []
-for i in range(timesteps):
-    if i % (timesteps // 10) == 0:
-        print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-        time1 = time.time()
-    if i % (timesteps / 1000):
-        A.append(diffusion.totalMass*0.3)
-        t.append(i*totim / timesteps)
-    diffusion.timeStep()
+while failstop > 0 and abs(M0 - M) / M0 > 0.1:
+    KS = (upper + lower) / 2
+    print(f"\n################ KS = {KS} ################\n")
+    t, A = plot([Ainh_fixed(totime/timesteps, KS)], [t0, A0], label=str(KS))
+    if A[-1] - M0*0.7 > 0:
+        lower = KS
+    elif A[-1] - M0*0.7 < 0:
+        upper = KS
+    else:
+        break
+    failstop -= 1
 
-plt.plot(t,A, linewidth=5, alpha = 0.2, c = 'blue')
-
-plt.legend()
-plt.savefig('tmp.png')
-    
+print(f'Estimated KS: {KS}')
     
 
     

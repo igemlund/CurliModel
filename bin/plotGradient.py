@@ -1,4 +1,4 @@
-from fibrilformation import FibrilFormation
+from fibrilformation import UniformFibrilFormation
 from scipy.constants import N_A 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ time1 = time.time()
 timesteps = int(1e2)
 dist = 2500
 xst = 150
-diffusion = FibrilFormation(dist, xst, 10.*3600/timesteps, how='uniform')
+diffusion = UniformFibrilFormation(dist, xst, 10.*3600/timesteps, how='uniform')
 
 for i in range(timesteps):
     if i % (timesteps // 10) == 0:
