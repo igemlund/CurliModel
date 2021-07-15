@@ -39,7 +39,7 @@ class UniformFibrilFormation(object):
     Limits:
         deltax = dist / xsteps > CsgAFibril.UNITL 
         dist > 1000 nm (at least)
-        t > 1e3
+        dt > 1e3
     """
     CSGBRATE = 1.3e-13*N_A*1e-12
     def __init__(self, dist, xsteps, deltat,  inhibitors = [], concentrationProfile = None, fibril0 = None):
@@ -85,8 +85,6 @@ class UniformFibrilFormation(object):
                 kwrates = {'kplus':CsgAFibril.KPLUS}
                 for inh in self.C.inhibitors:
                     kwrates = inh.rateFunc(self.C, kwrates)
-                if (CsgAFibril.KPLUS != 1.4*10**6*1e24):
-                    print("WARNING")
                 
                 mC = self.C.U
                 fN = len(self.endpointSets[x])

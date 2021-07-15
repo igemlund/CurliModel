@@ -15,8 +15,11 @@ def main():
     xst = 100
     totim = 3600
 
-    for j in np.linspace(-13,-9,8):
+    for j in [0] + [i for i in np.linspace(-13,-9,8)]:
         args = (10**j,  dist, xst, totim/timesteps,'uniform', 0)
+        if j == 0:
+            args = (0,  dist, xst, totim/timesteps,'uniform', 0)
+
         diffusionInh =  UniformFibrilFormation(dist, xst, totim/timesteps,[CsgC(*args)])
         A = []
         t = []
@@ -29,21 +32,10 @@ def main():
             t.append(i*totim / timesteps )
             diffusionInh.timeStep()
 
-        plt.plot(t,A, alpha = 0.8, label="{} /s".format(str(round(10**j*10**24/N_A *10**12, 2)))) 
-
-    diffusionInh =  UniformFibrilFormation(dist, xst, totim/timesteps, \
-        [CsgC(0,dist, xst, totim/timesteps, 'uniform', 0)])
-    A = []
-    t = []
-    for i in range(timesteps):
-        if i % (timesteps // 10) == 0:
-            print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
-            time1 = time.time()
-        A.append(diffusionInh.totalMass)
-        t.append(i*totim / timesteps)
-        diffusionInh.timeStep()
-
-    plt.plot(t,A,alpha=0.2, lw=5)
+        if j == 0:
+            plt.plot(t,A, alpha = 0.2, lw=5)
+        else:
+            plt.plot(t,A, alpha = 0.8, label="{} /s".format(str(round(10**j*10**24/N_A *10**12, 2))))
 
     plt.legend()
     plt.title('Effect of CsgC Chaperone Secretion Rate on Curli Growth. \n \
