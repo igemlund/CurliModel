@@ -63,8 +63,7 @@ class SphericNumericalDiffusion(object):
 
 
 class SphericIncrementedDiffusion(SphericNumericalDiffusion):
-    bactomol = (N_A*1e-12)
-    def __init__(self, start, stop, xsteps, deltat, D, ke, U = None):
+    def __init__(self, start, stop, xsteps, deltat, D, ke, cBacteria=1e12, U = None):
         """Simulates diffusion whith more material being added at pos x=start.
 
         Args:
@@ -73,10 +72,11 @@ class SphericIncrementedDiffusion(SphericNumericalDiffusion):
         """
         super().__init__(start, stop, xsteps, deltat, D, U)
         self.ke = ke
+        self.bactomol = (N_A/cBacteria)
     
 
     def timeStep(self):
-        self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)
+        self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)*1e3
         super().timeStep()
 
 class UniformIncrementedDiffusion(object):
@@ -97,12 +97,11 @@ class UniformIncrementedDiffusion(object):
         self.U += self.ke*self.deltat
 
 class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
-    ke = 1e-10 
-    R0 = 380
-    D = 82114 *1e-9
     
+    R0 = 380e-9
+    D = 1.2 *1e-10
     
-    def __init__(self, dist, xsteps, deltat, how, U0):
+    def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', U0=0):
         """Simmulates the diffusion of CsgA monomers. 
 
         Args:
@@ -113,17 +112,18 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
             U0 (float or list<int>[xsteps]): Initial concentration or concentration profile
         """
         self.how = how
+        self.ke = 1e-10 / 1e12 *cBacteria
         if how == 'spherical':
-            SphericIncrementedDiffusion.__init__(self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke, U0)
+            SphericIncrementedDiffusion.__init__(self, self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke, cBacteria, U0)
         elif how == 'uniform':
-            UniformIncrementedDiffusion.__init__(self,deltat, self.ke, U0)
+            UniformIncrementedDiffusion.__init__(self, deltat, self.ke, U0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
 
 class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
-    R0 = 380
-    D = 82114
-    def __init__(self, dist, xsteps, deltat, ke, how='uniform', U0=None):
+    R0 = 380e-9
+    D = 1.2 *1e-10
+    def __init__(self, dist, xsteps, deltat, ke, cBacteria=1e12,how='uniform', U0=None):
         """Utility class to simulate the behavior of inhibitors secreted from a bacteria. 
 
         Args:
@@ -136,9 +136,9 @@ class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         """
         self.how = how
         if how == 'spherical':
-            SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke, U0)
+            SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke,cBacteria, U0)
         elif how == 'uniform':
-            UniformIncrementedDiffusion.__init__(self,deltat, ke, U0)
+            UniformIncrementedDiffusion.__init__(self,deltat, ke, cBacteria, U0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
 
@@ -176,13 +176,12 @@ class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         self.bindingFunc(other)
     
 class inhibitedCsgAC(CsgADiffusion):
-    def __init__(self, dist, xsteps, deltat, how, U0, inhibitors):
+    def __init__(self, dist, xsteps, deltat, cBacteria, how, U0, inhibitors):
         """Final subclass that combines the inhibitors with the CsgA class. 
         """
-        super().__init__(dist, xsteps, deltat, how, U0)
+        super().__init__(dist, xsteps, deltat, cBacteria, how, U0)
         self.inhibitors = inhibitors
     
     def timeStep(self):
-        if self.how == 'uniform':
-            UniformIncrementedDiffusion.timeStep(self)
+        super().timeStep()
         list(map(lambda i : i.timeStep(self), self.inhibitors))
