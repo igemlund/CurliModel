@@ -72,14 +72,23 @@ class UniformFibrilFormation(object):
         fibril.size += 1
         fibril.pos += fibril.UNITL*np.cos(fibril.alpha)
         diff = fibril.pos % self.deltax
+        """
+        while fibril.pos / self.deltax >= self.xsteps:
+            self.endpointSets = copy.deepcopy(self.endpointSets) + [ListDict() for _ in range(self.xsteps)]
+            massProfiletmp = np.zeros(self.xsteps*2)
+            massProfiletmp[:self.xsteps] = self.massProfile
+            self.massProfile = massProfiletmp
+            self.xsteps *= 2
+            self.C = inhibitedCsgAC(self.dist, self.xsteps, self.deltat, self.cBacteria, self.C.how, self.C.U, self.C.inhibitors)
+            """
         fi = lambda i : int(np.floor(i))
+        self.totalMass += 1
         if fi(fibril.pos / self.deltax) != fi(pos0 / self.deltax):
-            self.massProfile[fi(pos0 / self.deltax)] += ((fibril.pos -pos0)-diff) / (fibril.pos -pos0)
-            self.massProfile[fi(fibril.pos / self.deltax)] += diff / (fibril.pos -pos0)
+            self.massProfile[fi(pos0 / self.deltax)] += (abs(fibril.pos -pos0)-diff) / abs(fibril.pos -pos0)
+            self.massProfile[fi(fibril.pos / self.deltax)] += diff / abs(fibril.pos -pos0)
             return
         else:
             self.massProfile[fi(pos0 / self.deltax)] += 1
-            self.totalMass += 1
         return
          
     def timeStep(self):
@@ -99,7 +108,9 @@ class UniformFibrilFormation(object):
                 list(map(self.elongate, toElongate))
                 list(map(lambda f: self.endpointSets[x].remove(f), toElongate))
                 try:
-                    list(map(lambda f : self.endpointSets[int(f.pos // self.deltax)].add(f), set(toElongate)))
+                    for f in set(toElongate):
+                        if f.pos > 0:
+                            self.endpointSets[int(f.pos // self.deltax)].add(f)
                 except IndexError:
                     raise "Dist to small. Fibril out of bounds."
                 
@@ -109,6 +120,9 @@ class UniformFibrilFormation(object):
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
+        
+        if self.C.U > 10*self.C.time*self.C.ke:
+            raise ValueError('Total fibril concentration much greater than production')
 
 class DiffusiveFibrilFormation(UniformFibrilFormation):
     def __init__(self, dist, xsteps, deltat,  inhibitors=[], cBacteria=1e12, concentrationProfile = None, fibril0 = None):
@@ -123,12 +137,16 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
                 dV = 4/3*np.pi*((xPos+self.deltax)**3 - xPos**3)*1e3
                 mN = mC * N_A * dV
                 nElongations = int(np.random.poisson(max(CsgAFibril.KPLUS* fN * mC*self.deltat,0)))
+                if nElongations > mN:
+                    nElongations = int(mN)
                 toElongate = np.random.choice(fN, size=nElongations)
                 toElongate = list(map(lambda f : self.endpointSets[x].items[f], toElongate))
                 list(map(self.elongate, toElongate))
                 list(map(lambda f: self.endpointSets[x].remove(f), toElongate))
                 try:
-                    list(map(lambda f : self.endpointSets[int(f.pos // self.deltax)].add(f), set(toElongate)))
+                    for f in set(toElongate):
+                        if f.pos > 0:
+                            self.endpointSets[int(f.pos // self.deltax)].add(f)
                 except IndexError:
                     raise "Dist to small. Fibril out of bounds."
 
@@ -138,3 +156,6 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
+        
+        if sum(self.C.U)[0] > 10*self.C.time*self.C.ke:
+            raise ValueError('Total fibril concentration much greater than production')

@@ -24,8 +24,10 @@ class SphericNumericalDiffusion(object):
         self.D = D
         self.deltax = (stop - start)/xsteps
         self.time = 0
-        self.U = U
-        if self.U == None:
+        if type(U) != type(None):
+            self.U = np.zeros((xsteps, 1))
+            self.U[:U.shape[0], :U.shape[1]] = U
+        else:
             self.U = np.zeros((xsteps, 1))
         self.makeArray(xsteps, deltat, self.deltax, D)
     
@@ -76,11 +78,14 @@ class SphericIncrementedDiffusion(SphericNumericalDiffusion):
     
 
     def timeStep(self):
-        self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)*1e3
+        if type(self.U) == int:
+            raise ValueError
+        if type(self.U) != type(None):
+            self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)*1e3
         super().timeStep()
 
 class UniformIncrementedDiffusion(object):
-    def __init__(self, deltat, ke, U = 0):
+    def __init__(self, deltat, ke, U = None):
         """Simulates concentration in a homogenous solution were more substance is added every second. 
 
         Args:
@@ -90,18 +95,22 @@ class UniformIncrementedDiffusion(object):
         """
         self.deltat = deltat
         self.time = 0
-        self.U = U
+        if U != None:
+            self.U = U
+        else:
+            self.U = 0
         self.ke = ke
     
     def timeStep(self):
         self.U += self.ke*self.deltat
+        self.time += self.deltat
 
 class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     
     R0 = 380e-9
     D = 1.2 *1e-10
     
-    def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', U0=0):
+    def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', U0=None):
         """Simmulates the diffusion of CsgA monomers. 
 
         Args:
@@ -119,6 +128,12 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
             UniformIncrementedDiffusion.__init__(self, deltat, self.ke, U0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
+    
+    def timeStep(self):
+        if self.how == 'spherical':
+            SphericIncrementedDiffusion.timeStep(self)
+        else:
+            UniformIncrementedDiffusion.timeStep(self)
 
 class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     R0 = 380e-9

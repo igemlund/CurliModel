@@ -9,14 +9,15 @@ np.random.RandomState(41)
 
 time0 = time.time()
 time1 = time.time()
-timesteps = int(1e5)
+timesteps = int(1e3)
 dist = 1e-5
 xst = 500
-diffusion = ff.DiffusiveFibrilFormation(dist, xst, 5.*3600/timesteps)
+diffusion = ff.UniformFibrilFormation(dist, xst, 10*3600/timesteps)
 
 for i in range(timesteps):
     if i % (timesteps // 10) == 0:
         print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
+        print(f'Total mass: {diffusion.totalMass}')
         time1 = time.time()
     diffusion.timeStep()
 
@@ -34,11 +35,11 @@ axs[0,0].scatter(x, diffusion.massProfile)
 axs[0,0].set_title('Mass distribution')
 axs[0,0].set_xlabel('Distance from membrane (/nm)')
 axs[0,0].set_ylabel('Mass /CsgA mass')
-axs[0,1].plot(x, diffusion.C.U[:-200,0] / 1e-6)
+#axs[0,1].plot(x, diffusion.C.U[:-200,0] / 1e-6)
 axs[0,1].set_title('Monomer concentration')
 axs[0,1].set_ylabel(f"Concentration /{mu}M")
 axs[0,1].set_yscale('log')
-axs[1,0].hist(list(map(lambda i : i.pos, fibrils)))
+axs[1,0].hist(list(map(lambda i : i.pos*1e9, fibrils)))
 axs[1,0].set_title('Endpoint distrubution')
 axs[1,0].set_yscale("log")
 axs[1,0].set_xlabel('Distance from membrane /nm')
