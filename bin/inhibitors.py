@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.constants import N_A
-from numericaldiffusion import Inh
+from numericaldiffusion import Inhibitor
 
 class Ainh_fixed:
     U = 0.3*1e-3 #Concentration in mol/nm3
@@ -13,7 +13,7 @@ class Ainh_fixed:
     def rateFunc(self,other, kwrates):
         return kwrates
     
-class Ainh(Inh):
+class Ainh(Inhibitor):
     """The inhibitor binding to CsgA. 
     The binding constant KS was estimated by assuming first order binding to the CsgA monomers \
         and then computing the equilibrium constant from previous published results. 
@@ -34,7 +34,7 @@ class Ainh(Inh):
             self.U -= max(self.KS*self.U*monC.U*self.deltat,0)
             monC.U -= max(self.KS*self.U*monC.U*self.deltat,0)
 
-class CsgC(Inh):
+class CsgC(Inhibitor):
     """The CsgC chaperone. 
     """
     def __init__(self, pAinh, dist, xsteps, deltat, how, U0):

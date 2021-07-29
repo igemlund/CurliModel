@@ -85,7 +85,7 @@ class SphericIncrementedDiffusion(SphericNumericalDiffusion):
         super().timeStep()
 
 class UniformIncrementedDiffusion(object):
-    def __init__(self, deltat, ke, U = None):
+    def __init__(self, deltat, ke, c0 = None):
         """Simulates concentration in a homogenous solution were more substance is added every second. 
 
         Args:
@@ -95,14 +95,14 @@ class UniformIncrementedDiffusion(object):
         """
         self.deltat = deltat
         self.time = 0
-        if U != None:
-            self.U = U
+        if c0 != None:
+            self.c = c0
         else:
-            self.U = 0
+            self.c = 0
         self.ke = ke
     
     def timeStep(self):
-        self.U += self.ke*self.deltat
+        self.c += self.ke*self.deltat
         self.time += self.deltat
 
 class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
@@ -110,7 +110,7 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     R0 = 380e-9
     D = 8*1e-11
     
-    def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', U0=None):
+    def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', c0=None):
         """Simmulates the diffusion of CsgA monomers. 
 
         Args:
@@ -123,9 +123,9 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         self.how = how
         self.ke = 1e-10 / 1e12 *cBacteria
         if how == 'spherical':
-            SphericIncrementedDiffusion.__init__(self, self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke, cBacteria, U0)
+            SphericIncrementedDiffusion.__init__(self, self.R0, dist + self.R0, xsteps, deltat, self.D, self.ke, cBacteria, c0)
         elif how == 'uniform':
-            UniformIncrementedDiffusion.__init__(self, deltat, self.ke, U0)
+            UniformIncrementedDiffusion.__init__(self, deltat, self.ke, c0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
     
@@ -135,10 +135,10 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         else:
             UniformIncrementedDiffusion.timeStep(self)
 
-class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
+class Inhibitor(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     R0 = 380e-9
     D = 1.2 *1e-10
-    def __init__(self, dist, xsteps, deltat, ke, cBacteria=1e12,how='uniform', U0=None):
+    def __init__(self, dist, xsteps, deltat, ke, cBacteria=1e12,how='uniform', c0=None):
         """Utility class to simulate the behavior of inhibitors secreted from a bacteria. 
 
         Args:
@@ -151,9 +151,9 @@ class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         """
         self.how = how
         if how == 'spherical':
-            SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke,cBacteria, U0)
+            SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke,cBacteria, c0)
         elif how == 'uniform':
-            UniformIncrementedDiffusion.__init__(self,deltat, ke, cBacteria, U0)
+            UniformIncrementedDiffusion.__init__(self,deltat, ke, cBacteria, c0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
 
@@ -191,10 +191,10 @@ class Inh(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
         self.bindingFunc(other)
     
 class inhibitedCsgAC(CsgADiffusion):
-    def __init__(self, dist, xsteps, deltat, cBacteria, how, U0, inhibitors):
+    def __init__(self, dist, xsteps, deltat, cBacteria, how, c0, inhibitors):
         """Final subclass that combines the inhibitors with the CsgA class. 
         """
-        super().__init__(dist, xsteps, deltat, cBacteria, how, U0)
+        super().__init__(dist, xsteps, deltat, cBacteria, how, c0)
         self.inhibitors = inhibitors
     
     def timeStep(self):

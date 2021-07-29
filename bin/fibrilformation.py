@@ -6,7 +6,32 @@ import cmath
 from scipy.constants import N_A
 import copy
 
-class CsgAFibril:
+class CurliFibril(object):
+    """
+    An object describing one Curli fibril.
+    
+    Attributes
+    ----------
+    SIGMA: constant 3.47
+        average angle difference between two Curli subunits (/degrees)
+    KPLUS: constant 1.4e6
+        Elongation rate (/mol/s)
+    UNITL: constant 4e-9
+        length of one subunit
+    pos: float
+        distance from cell membrane (/m)
+    alpha: float
+        angle deviation from original orientation
+    size: int
+        number of subunits
+    index: int
+        number of fibrils created before this one
+    
+    Methods
+    -------
+    None
+    
+    """
     SIGMA = 3.47 #degrees
     KPLUS = 1.4*10**6 #/mol s
     UNITL = 4e-9
@@ -24,35 +49,87 @@ class CsgAFibril:
 
 class UniformFibrilFormation(object):
     """
-    Simulates Curli fibril formation. 
-    
-    Attributes:
-        float dist : Maximum distance from cell membrane to simulate
-        int xsteps : Number of bins to devide dist into
-        float deltat : length of one timestep
-        EcoliMonomeriDiffusion diffusion : Simulates monomeric diffusion
-        float deltax : length of one bin
-        list<ListDict> endpointSet : Keeps track of all fibril endpoints
-        np.array massProfile : Keeps track of mass distribution in every bin
-        int index : Number of fibrils in simulation, used for creating unique fibril objects. 
-    
-    Limits:
-        deltax = dist / xsteps > CsgAFibril.UNITL 
-        dist > 1000 nm (at least)
-        dt > 1e3
+    Simulates Curli fibril formation given environment and inhibitors.
+
+    ...
+
+    Attributes
+    ----------
+    dist: float
+        total simulated distance from bacteria cell membrane
+    CSGBRATE: constant 1.3e-13
+        production rate of CsgB protein (nbr/bacteria/s)
+    xsteps: int
+        number of bins to keep track of fibrils in
+    deltat: float
+        length of one timestep
+    deltax: float
+        length of one bin
+    cBacteria: float
+        bacteria concentration
+
+    Methods
+    ----------
+    timeStep:
+        Steps time forward one timestep
+        Args:
+            None
+        Returns:
+            None
+    getTime:
+        Returns the total time simulated this far
+        Args:
+            None
+        Returns:
+            total time (float)
+    getMass:
+        Returns the total mass of Curli fibrils (/CsgA mass)
+        Args:
+            None
+        Returns:
+            total mass (int)
+    getMassProfile:
+        Returns mass distribution of Curli at different distances from the membrane
+        Args:
+            None
+        Returns:
+            1d array of mass distribution (np.array)
+    getFibrils:
+        Returns list of all fibrils
+        Args:
+            None
+        Returns:
+            list of CurliFibril objects (list)
+
     """
     
-    def __init__(self, dist, xsteps, deltat,  inhibitors = [], cBacteria=1e12, concentrationProfile = None, fibril0 = None, how='uniform'):
+    
+    def __init__(self, dist, xsteps, deltat,  inhibitors = [], cBacteria=1e12, initial_concentration = None, fibril0 = None):
+        """
+        Initialises the class.
+        
+        Args:
+            dist (float): Maximum distance from cell membrane to simulate (m)
+            xsteps (int): Number of bins to devide dist into
+            deltat (float): Length of one timestep (s)
+            inhibitors (list): List of inhibitor objects. Defaults to [].
+            cBacteria (float): Bacteria concentration in environment. Defaults to 1e12.
+            inital_concentration (float): Inital CsgA concentration. Defaults to None.
+            fibril0 (UniformFibrilFormation): Inital fibrils. Defaults to None.
+        
+        Returns:
+            None
+        """
         self.dist = dist
         self.CSGBRATE = 1.3e-13*N_A/cBacteria #n / bac / s
         self.xsteps = xsteps
         self.deltat = deltat
         self.deltax = dist / xsteps
         self.cBacteria = cBacteria
-        if concentrationProfile == None:
-            self.C = inhibitedCsgAC(dist, xsteps, deltat, cBacteria, how = how,U0=None, inhibitors=inhibitors)
+        if initial_concentration == None:
+            self.C = inhibitedCsgAC(dist, xsteps, deltat, cBacteria, how = 'uniform',c0=None, inhibitors=inhibitors)
         else:
-            self.C = concentrationProfile
+            self.C = initial_concentration
         
         if fibril0 == None:
             self.endpointSets = [ListDict() for _ in range(xsteps)]
@@ -64,7 +141,21 @@ class UniformFibrilFormation(object):
             self.massProfile = copy.deepcopy(fibril0.massProfile)
             self.index = copy.deepcopy(fibril0.index)
             self.totalMass = copy.deepcopy(fibril0.totalMass)
-            self.C.U = copy.deepcopy(fibril0.C.U)
+            self.C.c = copy.deepcopy(fibril0.C.c)
+    
+    def getTime(self):
+        return self.C.time
+    def getMass(self):
+        return self.totalMass
+    def getFibrils(self):
+        fibrils = []
+        for i in self.endpointSets:
+            fibrils += i.items
+        return fibrils
+    def getConcentration(self):
+        return self.C.c
+    def getMassProfile(self):
+        return self.massProfile
     
     def elongate(self,fibril):
         pos0 = fibril.pos
@@ -79,7 +170,7 @@ class UniformFibrilFormation(object):
             massProfiletmp[:self.xsteps] = self.massProfile
             self.massProfile = massProfiletmp
             self.xsteps *= 2
-            self.C = inhibitedCsgAC(self.dist, self.xsteps, self.deltat, self.cBacteria, self.C.how, self.C.U, self.C.inhibitors)
+            self.C = inhibitedCsgAC(self.dist, self.xsteps, self.deltat, self.cBacteria, self.C.how, self.C.c, self.C.inhibitors)
             """
         fi = lambda i : int(np.floor(i))
         self.totalMass += 1
@@ -90,15 +181,15 @@ class UniformFibrilFormation(object):
         else:
             self.massProfile[fi(pos0 / self.deltax)] += 1
         return
-         
+        
     def timeStep(self):
         for x in np.random.choice([*range(self.xsteps)], size=self.xsteps, replace=False):
             if len(self.endpointSets[x]) > 0:
-                kwrates = {'kplus':CsgAFibril.KPLUS}
+                kwrates = {'kplus':CurliFibril.KPLUS}
                 for inh in self.C.inhibitors:
                     kwrates = inh.rateFunc(self.C, kwrates)
                 
-                mC = self.C.U
+                mC = self.C.c
                 fN = len(self.endpointSets[x])
                 dV = 1/self.cBacteria #The volume occupied by one bacteria in 1e12 bac/dm3 sol.
                 mN = mC * N_A * dV
@@ -115,18 +206,22 @@ class UniformFibrilFormation(object):
                     raise "Dist to small. Fibril out of bounds."
                 
                 mN -= nElongations
-                self.C.U = mN / dV /N_A
+                self.C.c = mN / dV /N_A
         self.C.timeStep()
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
-        list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
+        list(map(lambda f : self.endpointSets[0].add(CurliFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
         
-        if self.C.U > 10*self.C.time*self.C.ke:
+        if self.C.c > 10*self.C.time*self.C.ke:
             raise ValueError('Total fibril concentration much greater than production')
 
 class DiffusiveFibrilFormation(UniformFibrilFormation):
     def __init__(self, dist, xsteps, deltat,  inhibitors=[], cBacteria=1e12, concentrationProfile = None, fibril0 = None):
-        super().__init__(dist, xsteps, deltat, inhibitors, cBacteria,concentrationProfile, fibril0, how='spherical')
+        super().__init__(dist, xsteps, deltat, inhibitors, cBacteria,concentrationProfile, fibril0)
+        if concentrationProfile == None:
+            self.C = inhibitedCsgAC(dist, xsteps, deltat, cBacteria, how = 'spherical',U0=None, inhibitors=inhibitors)
+        else:
+            self.C = concentrationProfile
 
     def timeStep(self):
         for x in np.random.choice([*range(self.xsteps)], size=self.xsteps, replace=False):
