@@ -137,8 +137,6 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
                 dV = 4/3*np.pi*((xPos+self.deltax)**3 - xPos**3)*1e3
                 mN = mC * N_A * dV
                 nElongations = int(np.random.poisson(max(CsgAFibril.KPLUS* fN * mC*self.deltat,0)))
-                if nElongations > mN:
-                    nElongations = int(mN)
                 toElongate = np.random.choice(fN, size=nElongations)
                 toElongate = list(map(lambda f : self.endpointSets[x].items[f], toElongate))
                 list(map(self.elongate, toElongate))
@@ -157,5 +155,7 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
         list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
         
-        if sum(self.C.U)[0] > 10*self.C.time*self.C.ke:
+        fxp = lambda x: x*self.deltax + self.C.R0
+        f = lambda x: self.C.U[x,0]*(4/3*np.pi*(fxp(x)  + self.deltax)**3 - fxp(x)**3)*1e3*N_A
+        if sum(map(f, range(self.xsteps))) > 10*self.C.time*self.C.ke*N_A*self.cBacteria:
             raise ValueError('Total fibril concentration much greater than production')

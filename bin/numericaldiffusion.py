@@ -81,7 +81,7 @@ class SphericIncrementedDiffusion(SphericNumericalDiffusion):
         if type(self.U) == int:
             raise ValueError
         if type(self.U) != type(None):
-            self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A*3/4/np.pi/(self.start**2*self.deltax)*1e3
+            self.U[0,0] += self.ke*self.bactomol*self.deltat/N_A/(4/3*np.pi*((self.start + self.deltax)**3 - self.start**3)*1e3)
         super().timeStep()
 
 class UniformIncrementedDiffusion(object):
@@ -108,7 +108,7 @@ class UniformIncrementedDiffusion(object):
 class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
     
     R0 = 380e-9
-    D = 1.2 *1e-10
+    D = 8*1e-11
     
     def __init__(self, dist, xsteps, deltat, cBacteria=1e12,how='uniform', U0=None):
         """Simmulates the diffusion of CsgA monomers. 

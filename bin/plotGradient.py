@@ -9,10 +9,11 @@ np.random.RandomState(41)
 
 time0 = time.time()
 time1 = time.time()
-timesteps = int(1e3)
-dist = 1e-5
+timesteps = int(1e4)
+dist = 10e-5
 xst = 500
-diffusion = ff.UniformFibrilFormation(dist, xst, 10*3600/timesteps)
+print(f'Xdist {dist/xst}')
+diffusion = ff.DiffusiveFibrilFormation(dist, xst, 10*3600/timesteps)
 
 for i in range(timesteps):
     if i % (timesteps // 10) == 0:
