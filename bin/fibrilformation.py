@@ -33,7 +33,7 @@ class CurliFibril(object):
     
     """
     SIGMA = 3.47 #degrees
-    KPLUS = 1.4*10**6 #/mol s
+    KPLUS = 21000 #/mol s
     UNITL = 4e-9
 
     def __init__(self, index):

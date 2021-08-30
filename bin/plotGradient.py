@@ -9,18 +9,22 @@ np.random.RandomState(41)
 
 time0 = time.time()
 time1 = time.time()
-timesteps = int(1e4)
-dist = 2e-5
+timesteps = int(43000)
+dist = 5e-6
 xst = 500
 print(f'Xdist {dist/xst}')
-diffusion = ff.UniformFibrilFormation(dist, xst, 10*3600/timesteps)
+diffusion = ff.UniformFibrilFormation(dist, xst, 6*3600/timesteps, cBacteria=1e9)
 
+mass = []
+timel = []
 for i in range(timesteps):
     if i % (timesteps // 10) == 0:
         print("{prc}% completed in {t}s. Delta T = {dt}".format(prc = str(i / timesteps *100), t = str(time.time() - time0), dt = str(time.time() - time1)))
         print(f'Total mass: {diffusion.totalMass}')
         time1 = time.time()
     diffusion.timeStep()
+    mass.append(diffusion.getMass())
+    timel.append(diffusion.getTime())
 
 fibrils = []
 for i in diffusion.endpointSets:

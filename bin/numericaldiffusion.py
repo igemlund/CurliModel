@@ -150,10 +150,11 @@ class Inhibitor(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
             U0 (float or list<int>[xsteps], optional): Initial concentration profile. Defaults to None.
         """
         self.how = how
+        ke = ke *cBacteria*1e-12
         if how == 'spherical':
             SphericIncrementedDiffusion.__init__(self,self.R0, dist + self.R0, xsteps, deltat, self.D, ke,cBacteria, c0)
         elif how == 'uniform':
-            UniformIncrementedDiffusion.__init__(self,deltat, ke, cBacteria, c0)
+            UniformIncrementedDiffusion.__init__(self,deltat, ke, c0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
 
