@@ -241,7 +241,7 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
                         if f.pos > 0:
                             self.endpointSets[int(f.pos // self.deltax)].add(f)
                 except IndexError:
-                    raise "Dist to small. Fibril out of bounds."
+                    raise "Dist too small. Fibril out of bounds."
 
                 mN -= nElongations
                 self.C.U[x,0] = mN /dV /N_A
