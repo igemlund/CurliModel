@@ -9,11 +9,11 @@ np.random.RandomState(41)
 
 time0 = time.time()
 time1 = time.time()
-timesteps = int(43000)
+timesteps = int(4300)
 dist = 5e-6
 xst = 500
 print(f'Xdist {dist/xst}')
-diffusion = ff.UniformFibrilFormation(dist, xst, 6*3600/timesteps, cBacteria=1e9)
+diffusion = ff.UniformFibrilFormation(dist, xst, 10*3600/timesteps, cBacteria=1e12)
 
 mass = []
 timel = []
@@ -31,12 +31,11 @@ for i in diffusion.endpointSets:
     fibrils += i.items
 
 xstag = np.linspace(0., dist, xst + 1)
-x = (xstag[:-1] + diffusion.deltax/2) / 1e-9
+x = (xstag[:-1] + diffusion.deltax/2)
 mu = chr(956)
-x, diffusion.massProfile = x[:-200], diffusion.massProfile[:-200]
 fig, axs = plt.subplots(2,2, figsize=(12,9))
 fig.suptitle("After 10 h of growth")
-axs[0,0].scatter(x, diffusion.massProfile)
+axs[0,0].scatter(x, diffusion.getMassProfile())
 axs[0,0].set_title('Mass distribution')
 axs[0,0].set_xlabel('Distance from membrane (/nm)')
 axs[0,0].set_ylabel('Mass /CsgA mass')
