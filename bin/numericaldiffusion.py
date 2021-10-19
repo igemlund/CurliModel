@@ -30,7 +30,10 @@ class SphericNumericalDiffusion(object):
         else:
             self.U = np.zeros((xsteps, 1))
         self.makeArray(xsteps, deltat, self.deltax, D)
-    
+        
+    def setDiffusionConstant(self, d):
+        self.D = d
+        
     def makeArray(self, xsteps, deltat, deltax, D):
         """
         Generates the solution matrix to the systems of differential equations.
@@ -128,7 +131,7 @@ class CsgADiffusion(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
             UniformIncrementedDiffusion.__init__(self, deltat, self.ke, c0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
-    
+        
     def timeStep(self):
         if self.how == 'spherical':
             SphericIncrementedDiffusion.timeStep(self)
@@ -157,7 +160,7 @@ class Inhibitor(SphericIncrementedDiffusion, UniformIncrementedDiffusion):
             UniformIncrementedDiffusion.__init__(self,deltat, ke, c0)
         else: 
             raise ValueError("How must be 'spherical' or 'uniform'")
-
+    
     def bindingFunc(self,other):
         """Describes how the inhibitor will affect the CsgA concentration. The concentration profile is accesed and altered inplace \
              through the CgsADiffusion.U attribute.

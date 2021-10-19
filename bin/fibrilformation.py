@@ -219,7 +219,7 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
     def __init__(self, dist, xsteps, deltat,  inhibitors=[], cBacteria=1e12, concentrationProfile = None, fibril0 = None):
         super().__init__(dist, xsteps, deltat, inhibitors, cBacteria,concentrationProfile, fibril0)
         if concentrationProfile == None:
-            self.C = inhibitedCsgAC(dist, xsteps, deltat, cBacteria, how = 'spherical',U0=None, inhibitors=inhibitors)
+            self.C = inhibitedCsgAC(dist, xsteps, deltat, cBacteria, how = 'spherical',c0=None, inhibitors=inhibitors)
         else:
             self.C = concentrationProfile
 
@@ -231,7 +231,7 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
                 xPos = x*self.deltax + self.C.R0
                 dV = 4/3*np.pi*((xPos+self.deltax)**3 - xPos**3)*1e3
                 mN = mC * N_A * dV
-                nElongations = int(np.random.poisson(max(CsgAFibril.KPLUS* fN * mC*self.deltat,0)))
+                nElongations = int(np.random.poisson(max(CurliFibril.KPLUS* fN * mC*self.deltat,0)))
                 toElongate = np.random.choice(fN, size=nElongations)
                 toElongate = list(map(lambda f : self.endpointSets[x].items[f], toElongate))
                 list(map(self.elongate, toElongate))
@@ -247,7 +247,7 @@ class DiffusiveFibrilFormation(UniformFibrilFormation):
                 self.C.U[x,0] = mN /dV /N_A
         self.C.timeStep()
         nNewFibrils = np.random.poisson(self.CSGBRATE * self.deltat)
-        list(map(lambda f : self.endpointSets[0].add(CsgAFibril(f)), range(self.index, self.index + nNewFibrils)))
+        list(map(lambda f : self.endpointSets[0].add(CurliFibril(f)), range(self.index, self.index + nNewFibrils)))
         self.index += nNewFibrils
         
         fxp = lambda x: x*self.deltax + self.C.R0

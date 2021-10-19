@@ -9,11 +9,12 @@ np.random.RandomState(41)
 
 time0 = time.time()
 time1 = time.time()
-timesteps = int(4300)
+timesteps = int(10000)
 dist = 5e-6
 xst = 500
 print(f'Xdist {dist/xst}')
 diffusion = ff.UniformFibrilFormation(dist, xst, 10*3600/timesteps, cBacteria=1e12)
+
 
 mass = []
 timel = []
